@@ -22,14 +22,14 @@ for i in range(traj2.n_frames):
 print('Max pairwise rmsd: %f nm' % np.max(distances))
 assert np.all(distances - distances.T < 1e-6)
 reduced_distances = squareform(distances, checks=False)
-linkage = scipy.cluster.hierarchy.linkage(reduced_distances, method='average')
+linkage = scipy.cluster.hierarchy.linkage(distances, method='ward')
 print(len(linkage))
 #print(linkage)
 np.savetxt("/home/nav/linkage.txt", linkage)
 #clf = NearestCentroid()
 #clf.fit(linkage)
 #print(clf.centroids_)
-flatclust = fcluster(linkage, t=0.40, criterion='distance')
+flatclust = fcluster(linkage, t=2.00, criterion='distance')
 print(flatclust)
 nbOClust = len(numpy.unique(flatclust))
 df = pd. DataFrame(flatclust, columns=['Cluster'])
@@ -57,4 +57,22 @@ plt.title('RMSD Average linkage hierarchical clustering')
 _ = scipy.cluster.hierarchy.dendrogram(linkage, no_labels=False, count_sort='descendent')
 
 
+#plt.show()
+
+
+data = np.asmatrix(flatclust)
+
+fig, ay = plt.subplots(figsize=(10, 1.5))
+plt.xlabel("Frame")
+im = plt.imshow(data, aspect='auto', interpolation='none')
+plt.tight_layout()
+plt.tick_params(axis="y",
+                which='both',
+                left=False,
+                right=False,
+                labelleft=False)
+plt.tick_params(axis="x",
+                    direction="out",
+                    which='both',
+                    top=False)
 plt.show()
