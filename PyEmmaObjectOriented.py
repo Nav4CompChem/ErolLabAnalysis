@@ -4,29 +4,126 @@ import numpy as np
 import mdshare
 import pyemma
 from pyemma.util.contexts import settings
+import mdtraj as md
 from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import LogLocator
 from matplotlib.cm import get_cmap
 from pyemma.plots.markovtests import _add_ck_subplot
 
-pdb = mdshare.fetch('pentapeptide-impl-solv.pdb', working_directory='data')
-files = mdshare.fetch('pentapeptide-*-500ns-impl-solv.xtc', working_directory='data')
+files = ["/media/nav/New Volume1/Peptide/NativePeptide//01/5_NPT_long/traj_comp_skip10_nowater.xtc", "/media/nav/New Volume1/Peptide/NativePeptide/02/5_NPT_long/traj_comp_skip10_nowater.xtc",
+         "/media/nav/New Volume1/Peptide/NativePeptide/03/5_NPT_long/traj_comp_skip10_nowater.xtc", "/media/nav/New Volume1/Peptide/NativePeptide/04/5_NPT_long/traj_comp_skip10_nowater.xtc",
+         "/media/nav/New Volume1/Peptide/NativePeptide/05/5_NPT_long/traj_comp_skip10_nowater.xtc"
+        ]
+pdb = "/media/nav/New Volume1/Peptide/NativePeptide/01/5_NPT_long/nowater.gro"
+file = "/media/nav/New Volume1/Peptide/NativePeptide/NativePeptide/01/5_NPT_long/traj_comp_skip10_nowater.xtc"
+
+sampleTraj = md.load_xtc(files[0], pdb, stride=2)
+x = 0
+atoms = sampleTraj.topology.atoms
+
+atom_indices2 = [(a.index)+1 for a in sampleTraj.topology.atoms if a.element.symbol == 'N' ]
+atom_indicesH = [ a.index for a in sampleTraj.topology.atoms if a.element.symbol == 'O' ]
+
+print(atom_indices2)
+print(atom_indicesH)
+
+#pdb = mdshare.fetch('pentapeptide-impl-solv.pdb', working_directory='data')
+#files = mdshare.fetch('pentapeptide-*-500ns-impl-solv.xtc', working_directory='data')
+print("here")
+
+
+
 
 torsions_feat = pyemma.coordinates.featurizer(pdb)
-torsions_feat.add_backbone_torsions(cossin=True, periodic=False)
+torsions_feat.add_backbone_torsions( cossin=True)
 torsions_data = pyemma.coordinates.load(files, features=torsions_feat)
 labels = ['backbone\ntorsions']
+
+
+
+torsions_feat2 = pyemma.coordinates.featurizer(pdb)
+torsions_feat2.add_backbone_torsions( selstr="not resname CYS", cossin=True)
+torsions_feat2.add_chi1_torsions(selstr="resname CYS", cossin=True)
+torsions_data2 = pyemma.coordinates.load(files, features=torsions_feat2)
+
+#labels += ['minus \n 2 res']
+
+
+
+torsions_feat3 = pyemma.coordinates.featurizer(pdb)
+torsions_feat3.add_backbone_torsions( selstr="not resname CYS and not resid 2 and not resid 9 ", cossin=True)
+torsions_data3 = pyemma.coordinates.load(files, features=torsions_feat3)
+#labels += ['minus \n 4 res']
+
+
+
+torsions_feat4 = pyemma.coordinates.featurizer(pdb)
+torsions_feat4.add_backbone_torsions( selstr="not resname CYS and not resid 2 and not resid 9 and not resid 8 and not resid 3 and not resid 4 and not resid 7", cossin=True)
+torsions_data4 = pyemma.coordinates.load(files, features=torsions_feat4)
+#labels += ['minus \n 6 res']
+
+torsions_feat5 = pyemma.coordinates.featurizer(pdb)
+torsions_feat5.add_backbone_torsions( selstr="resname CYS", cossin=True)
+torsions_data5 = pyemma.coordinates.load(files, features=torsions_feat5)
+#labels += ['Just Cys']
+
+
+print("selestr worked")
 
 positions_feat = pyemma.coordinates.featurizer(pdb)
 positions_feat.add_selection(positions_feat.select_Backbone())
 positions_data = pyemma.coordinates.load(files, features=positions_feat)
-labels += ['backbone atom\npositions']
+
+
+#labels += ['backbone atom\npositions']
+
+rmsd_feat = pyemma.coordinates.featurizer(pdb)
+i = 0
+k = 0
+"""while i < 1000:
+    rmsd_feat.add_minrmsd_to_ref(files[k], ref_frame=(i*50), atom_indices=positions_feat.select_Backbone())
+    i+=1
+
+
+rmsd_data = pyemma.coordinates.load(files, features=rmsd_feat)
+labels += ['backbone\nrmsd']"""
+
 
 distances_feat = pyemma.coordinates.featurizer(pdb)
 distances_feat.add_distances(
     distances_feat.pairs(distances_feat.select_Backbone(), excluded_neighbors=2), periodic=False)
 distances_data = pyemma.coordinates.load(files, features=distances_feat)
-labels += ['backbone atom\ndistances']
+#labels += ['backbone atom\ndistances']
+
+chi1_feat = pyemma.coordinates.featurizer(pdb)
+chi1_feat.add_chi1_torsions(cossin=True)
+chi1_data = pyemma.coordinates.load(files, features=torsions_feat)
+#labels += ['Chi1\n torsions']
+
+
+combined_torsions_feat = pyemma.coordinates.featurizer(pdb)
+combined_torsions_feat.add_chi1_torsions(cossin=True)
+combined_torsions_feat.add_backbone_torsions(cossin=True)
+combined_torsions_data = pyemma.coordinates.load(files, features=combined_torsions_feat)
+labels += ['Combined\n torsions']
+
+print("Setting up contact features")
+contacts_feat = pyemma.coordinates.featurizer(pdb)
+contacts_feat.add_contacts(atom_indices2, atom_indicesH)
+contacts_data = pyemma.coordinates.load(files, features=contacts_feat)
+labels += ['Contacts']
+
+
+contacts_torsions_feat = pyemma.coordinates.featurizer(pdb)
+contacts_torsions_feat.add_chi1_torsions(cossin=True)
+contacts_torsions_feat.add_backbone_torsions(cossin=True)
+contacts_torsions_feat.add_contacts(atom_indices2, atom_indicesH)
+contacts_torsions_data = pyemma.coordinates.load(files, features=contacts_torsions_feat )
+
+#labels += ['Contacts and \n torsions']
+
+print(contacts_feat.dimension())
+print(torsions_feat5.dimension())
 
 dim = 10
 lags = [1, 2, 5, 10, 20]
@@ -34,6 +131,7 @@ dims = [i + 1 for i in range(10)]
 n_clustercenters = [5, 10, 30, 75, 200, 450]
 nstates = 5
 nits = 15
+
 
 def score_cv(data, dim, lag, number_of_splits=10, validation_fraction=0.5):
     """Compute a cross-validated VAMP2 score.
@@ -84,12 +182,14 @@ def vampFeatureComparison():
         errors += [distances_scores.std()]
         ax.bar(labels, scores, yerr=errors, color=['C0', 'C1', 'C2'])
         ax.set_title(r'lag time $\tau$={:.1f}ns'.format(lag * 0.1))
+        global vamp_bars_plot
         if lag == 5:
             # save for later
             vamp_bars_plot = dict(
                 labels=labels, scores=scores, errors=errors, dim=dim, lag=lag)
     axes[0].set_ylabel('VAMP2 score')
     fig.tight_layout()
+
 
 
 def dimensionVamp():
@@ -114,7 +214,6 @@ def hMap():
     pyemma.plots.plot_feature_histograms(
         tica_concatenated,
         ax=axes[0],
-        feature_labels=['IC1', 'IC2', 'IC3', 'IC4'],
         ylog=True)
     pyemma.plots.plot_density(*tica_concatenated[:, :2].T, ax=axes[1], logscale=True)
     axes[1].set_xlabel('IC 1')
@@ -165,16 +264,6 @@ def density():
     ax.set_ylabel('IC 2')
     fig.tight_layout()
 
-def runIts():
-    its = pyemma.msm.its(cluster.dtrajs, lags=50, nits=10, errors='bayes', ntasks=1)
-    pyemma.plots.plot_implied_timescales(its, units='ns', dt=0.1);
-    msm = pyemma.msm.bayesian_markov_model(cluster.dtrajs, lag=5, dt_traj='0.1 ns')
-    print('fraction of states used = {:.2f}'.format(msm.active_state_fraction))
-    print('fraction of counts used = {:.2f}'.format(msm.active_count_fraction))
-    cktest = msm.cktest(nstates, mlags=6)
-    pyemma.plots.plot_cktest(cktest, dt=0.1, units='ns');
-
-
 def its_separation_err(ts, ts_err):
     """
     Error propagation from ITS standard deviation to timescale separation.
@@ -216,7 +305,7 @@ def timeScales():
     axes[0].set_ylabel('implied timescales / ns')
     axes[1].set_xticks(range(1, nits))
     axes[1].set_xticklabels(
-        ["{:d}/{:d}".format(k, k + 1) for k in range(1, nits + 2)],
+        ["{:d}/{:d}".format(k, k + 1) for k in range(1, nits)],
         rotation=45)
     axes[1].set_xlabel('implied timescale indices')
     axes[1].set_ylabel('timescale separation')
@@ -264,11 +353,11 @@ def eigenMap():
 vampFeatureComparison()
 dimensionVamp()
 plt.show()
-tica = pyemma.coordinates.tica(torsions_data, lag=5, tasks=1)
+tica = pyemma.coordinates.tica(torsions_data, lag=100)
 tica_output = tica.get_output()
 tica_concatenated = np.concatenate(tica_output)
 cluster = pyemma.coordinates.cluster_kmeans(
-    tica_output, k=75, max_iter=100, stride=10)
+    tica_output, k=30, max_iter=150, stride=10)
 dtrajs_concatenated = np.concatenate(cluster.dtrajs)
 
 hMap()
@@ -277,11 +366,21 @@ clusterNum()
 density()
 print("preits")
 plt.show()
-runIts()
+
+its = pyemma.msm.its(cluster.dtrajs, lags=150, nits=10, errors='bayes', n_jobs=1)
+pyemma.plots.plot_implied_timescales(its, units='ns', dt=0.1);
+msm = pyemma.msm.bayesian_markov_model(cluster.dtrajs, lag=100, dt_traj='0.1 ns')
+print('fraction of states used = {:.2f}'.format(msm.active_state_fraction))
+print('fraction of counts used = {:.2f}'.format(msm.active_count_fraction))
+cktest = msm.cktest(nstates, mlags=6, n_jobs=1)
+pyemma.plots.plot_cktest(cktest, dt=0.1, units='ns');
+
+
 timeScales()
 reweightedMap()
 eigenMap()
-
+print(vamp_bars_plot)
+plt.show()
 
 msm.pcca(nstates)
 
@@ -310,6 +409,11 @@ def stateMap():
     misc['cbar'].set_ticklabels([r'$\mathcal{S}_%d$' % (i + 1)
                                  for i in range(nstates)])
     fig.tight_layout()
+
+
+membershipMap()
+stateMap()
+plt.show()
 
 pcca_samples = msm.sample_by_distributions(msm.metastable_distributions, 10)
 torsions_source = pyemma.coordinates.source(files, features=torsions_feat)
@@ -401,15 +505,16 @@ pyemma.plots.plot_contour(
         start + 1, final + 1))
 fig.tight_layout()
 
+plt.show()
 from mdtraj import shrake_rupley, compute_rg
 
 #We compute a maximum likelihood MSM for comparison
-mlmsm = pyemma.msm.estimate_markov_model(cluster.dtrajs, lag=5, dt_traj='0.1 ns')
+mlmsm = pyemma.msm.estimate_markov_model(cluster.dtrajs, lag=100, dt_traj='0.1 ns')
 
 from mdtraj import shrake_rupley, compute_rg
 
 #We compute a maximum likelihood MSM for comparison
-mlmsm = pyemma.msm.estimate_markov_model(cluster.dtrajs, lag=5, dt_traj='0.1 ns')
+mlmsm = pyemma.msm.estimate_markov_model(cluster.dtrajs, lag=100, dt_traj='0.1 ns')
 
 markov_samples = [smpl for smpl in msm.sample_by_state(20)]
 
@@ -449,6 +554,7 @@ ax.set_xlabel('IC 1')
 ax.set_ylabel('IC 2')
 fig.tight_layout()
 
+plt.show()
 def trpAuto():
     eq_time_ml, eq_acf_ml = mlmsm.correlation(markov_average_trp_sasa, maxtime=150)
 
@@ -524,9 +630,80 @@ def trpAuto():
     ax.legend()
     fig.tight_layout()
 
+trpAuto()
+plt.show()
 
 state2ensemble = np.abs(msm.expectation(markov_average_trp_sasa) -
                         msm.metastable_distributions.dot(np.array(markov_average_trp_sasa)))
 DataFrame(np.round(state2ensemble, 3), index=range(1, nstates + 1), columns=[''])
 
 
+
+mpl.rcParams['axes.titlesize'] = 6
+mpl.rcParams['axes.labelsize'] = 6
+mpl.rcParams['legend.fontsize'] = 5
+mpl.rcParams['xtick.labelsize'] = 5
+mpl.rcParams['ytick.labelsize'] = 5
+mpl.rcParams['xtick.minor.pad'] = 2
+mpl.rcParams['xtick.major.pad'] = 3
+mpl.rcParams['ytick.minor.pad'] = 2
+mpl.rcParams['ytick.major.pad'] = 3
+mpl.rcParams['axes.labelpad'] = 1
+mpl.rcParams['lines.markersize'] = 4
+
+def scoreFigure():
+    fig = plt.figure(figsize=(3.47, 4.65))
+    gw = int(np.floor(0.5 + 1000 * fig.get_figwidth()))
+    gh = int(np.floor(0.5 + 1000 * fig.get_figheight()))
+    gs = plt.GridSpec(gh, gw)
+    gs.update(hspace=0.0, wspace=0.0, left=0.0, right=1.0, bottom=0.0, top=1.0)
+
+    ax_box = fig.add_subplot(gs[:, :])
+    ax_box.set_axis_off()
+    ax_box.text(0.00, 0.95, '(a)', size=10, zorder=1)
+    ax_box.text(0.00, 0.58, '(b)', size=10)
+    ax_box.text(0.55, 0.58, '(c)', size=10)
+    ax_box.text(0.00, 0.22, '(d)', size=10)
+
+    ax_mol = fig.add_subplot(gs[:1600, -2820:-400])
+    ax_mol.set_axis_off()
+    ax_mol.imshow(plt.imread('notreduced.png'))
+
+    ax_feat = fig.add_subplot(gs[2000:3150, 400:1800])
+    ax_feat.bar(
+        vamp_bars_plot['labels'],
+        vamp_bars_plot['scores'],
+        yerr=vamp_bars_plot['errors'],
+        color=['C0', 'C1', 'C2'])
+    ax_feat.set_ylabel('VAMP2 score')
+    ax_feat.set_title(r'lag time $\tau$ = {:.1f} ns'.format(vamp_bars_plot['lag'] * 0.1))
+    ax_feat.set_ylim(2.75, 3.65)
+    ax_feat.tick_params(axis='x', labelrotation=20)
+
+    ax_sample_free_energy = fig.add_subplot(gs[2000:3150, 2200:3350])
+    _, _, misc = pyemma.plots.plot_free_energy(
+        *tica_concatenated.T[:2],
+        ax=ax_sample_free_energy,
+        cax=fig.add_subplot(gs[1900:1950, 2200:3350]),
+        cbar_orientation='horizontal',
+        legacy=False)
+    misc['cbar'].set_label('sample free energy / kT')
+    misc['cbar'].set_ticks(np.arange(9))
+    misc['cbar'].ax.xaxis.set_ticks_position('top')
+    misc['cbar'].ax.xaxis.set_label_position('top')
+    ax_sample_free_energy.set_xlabel('IC 1')
+    ax_sample_free_energy.set_ylabel('IC 2')
+
+    x = 0.1 * np.arange(tica_output[0].shape[0])
+    ax_tic1 = fig.add_subplot(gs[3650:4000, 400:3350])
+    ax_tic2 = fig.add_subplot(gs[4000:4350, 400:3350])
+
+    ax_tic1.plot(x, tica_output[0][:, 0], linewidth=0.25)
+    ax_tic2.plot(x, tica_output[0][:, 1], linewidth=0.25)
+    ax_tic1.set_ylabel('IC 1')
+    ax_tic2.set_ylabel('IC 2')
+    ax_tic2.set_xlabel('time / ns')
+
+    fig.savefig('data/figure_3.pdf', dpi=300)
+
+scoreFigure()
